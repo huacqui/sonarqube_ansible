@@ -1,0 +1,60 @@
+---
+- name: Nginx | Add nginx Repository
+  ansible.builtin.copy:
+    src: nginx.repo
+    dest: /etc/yum.repos.d/nginx.repo
+
+- name: Nginx | Install nginx
+  ansible.builtin.dnf:
+    name: 
+      - nginx
+      - python3-cryptography
+      - python3-libsemanage
+      - python3-libselinux
+      - python3-policycoreutils
+    state: present
+
+- name: Nginx | Generate an OpenSSL private key with the default values (4096 bits, RSA)
+  community.crypto.openssl_privatekey:
+    path: /etc/pki/tls/private/nginx.key
+
+- name: Nginx | Generate an OpenSSL Certificate Signing Request
+  community.crypto.openssl_csr:
+    path: /etc/pki/tls/private/nginx.csr
+    privatekey_path: /etc/pki/tls/private/nginx.key
+    common_name: nginx
+    country_name: PY
+    email_address: admin@com.py
+    locality_name: Asunción
+    organization_name: nginx
+    subject_alt_name: "IP:{{  ansible_default_ipv4.address }},DNS:nginx"
+
+- name: Nginx | Generate a Self Signed OpenSSL certificate
+  community.crypto.x509_certificate:
+    path: /etc/pki/tls/certs/nginx.crt
+    privatekey_path: /etc/pki/tls/private/nginx.key
+    csr_path: /etc/pki/tls/private/nginx.csr
+    provider: selfsigned
+
+- name: Nginx | Config nginx for jenkins
+  ansible.builtin.template:
+    src: sonarqube.conf.j2
+    dest: /etc/nginx/conf.d/sonarqube.conf
+ 
+- name: Nginx | Add firewalld service port
+  ansible.posix.firewalld:
+    service: https
+    permanent: yes
+    immediate: yes
+    state: enabled
+
+- name: Nginx | Add selinux perission
+  ansible.posix.seboolean:
+    name: httpd_can_network_connect
+    state: yes
+    persistent: yes
+
+- name: Nginx | Start nginx service
+  ansible.builtin.service:
+    name: nginx
+    state: started   

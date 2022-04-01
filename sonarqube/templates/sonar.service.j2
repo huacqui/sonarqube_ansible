@@ -1,0 +1,20 @@
+[Unit]
+Description=SonarQube service
+After=syslog.target network.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=sonarqube
+Group=sonarqube
+PermissionsStartOnly=true
+ExecStart=/bin/nohup java -Xms4096m -Xmx4096m -Djava.net.preferIPv4Stack=true -jar {{ sonarqube_user.home }}/{{ sonarqube_home.files[0] }}lib/sonar-application-{{ sonarqube_home.files[0].split('-')[1] | replace('/','')}}.jar
+StandardOutput=syslog
+LimitNOFILE=131072
+LimitNPROC=8192
+TimeoutStartSec=5
+Restart=always
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

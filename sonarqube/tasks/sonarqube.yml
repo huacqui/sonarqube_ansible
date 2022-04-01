@@ -1,0 +1,50 @@
+---
+- name: Sonarqube | Install dependencies
+  ansible.builtin.dnf:
+    name:
+      - java-11-openjdk
+      - freetype
+      - unzip
+
+- name: Sonarqube | Create sonarqube user
+  ansible.builtin.user:
+    name: sonarqube
+    create_home: yes
+    home: /opt/sonarqube
+    system: yes
+    state: present
+  register: sonarqube_user
+
+- name: Sonarqube | Download sonarqube
+  ansible.builtin.unarchive:
+    src: "{{ sonarqube_url }}"
+    dest: /opt/sonarqube
+    remote_src: yes
+    owner: sonarqube
+    group: sonarqube
+    list_files: true
+  register: sonarqube_home
+
+- name: Sonarqube | Config
+  ansible.builtin.blockinfile:
+    path: "{{ sonarqube_user.home }}/{{ sonarqube_home.files[0] }}conf/sonar.properties"
+    block: |
+      sonar.jdbc.username=sonarqube
+      sonar.jdbc.password=sonarqube
+      sonar.jdbc.url=jdbc:postgresql://127.0.0.1/sonarqubedb
+      sonar.path.data={{ sonarqube_user.home }}/data
+      sonar.path.temp={{ sonarqube_user.home }}/temp
+
+- name: Sonarqube | sysctl config
+  ansible.posix.sysctl:
+    name: vm.max_map_count
+    value: '524288'
+    sysctl_set: yes
+    reload: yes
+    state: present
+
+- name: Sonarqube | Create sevice
+  ansible.builtin.template:
+    src: sonar.service.j2
+    dest: /etc/systemd/system/sonar.service
+

@@ -1,0 +1,10 @@
+---
+# tasks file for sonarqube
+- name: Postgresql | Add Postgresql Task
+  include_tasks: "postgresql.yml"
+
+- name: Sonarqube | Add Sonarqube Task
+  include_tasks: "sonarqube.yml"
+
+- name: Nginx | Add Nginx Task
+  include_tasks: "nginx.yml"

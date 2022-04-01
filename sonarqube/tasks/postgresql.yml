@@ -1,0 +1,76 @@
+---
+- name: Postgresql | Install dependencies Posgresql
+  ansible.builtin.dnf:
+    name: 
+      - "@postgresql:13"
+      - python3-psycopg2
+    state: present
+
+- name: Postgresql | Find out if PostgreSQL is initialized
+  ansible.builtin.stat:
+    path: /var/lib/pgsql/data/pg_hba.conf
+  register: postgres_data
+
+- name: Postgresql | Initialize PostgreSQL
+  ansible.builtin.shell: postgresql-setup initdb
+  when: not postgres_data.stat.exists
+
+- name: Postgresql | Config acces user sonarqube
+  community.postgresql.postgresql_pg_hba:
+    dest: /var/lib/pgsql/data/pg_hba.conf
+    contype: host
+    users: sonarqube
+    address: 127.0.0.1
+    databases: sonarqubedb
+    method: scram-sha-256
+    state: present
+
+- name: Postgresql | Remove acces all users
+  community.postgresql.postgresql_pg_hba:
+    dest: /var/lib/pgsql/data/pg_hba.conf
+    contype: host
+    users: all
+    address: 127.0.0.1/32
+    databases: all
+    method: peer
+    state: present
+
+- name: Postgresql | Started postgresql service
+  ansible.builtin.service:
+    name: postgresql
+    state: started
+    enabled: yes
+
+- name: Postgresql | Enabled scram-sha-256
+  community.postgresql.postgresql_set:
+    name: password_encryption
+    value: scram-sha-256
+  become: yes
+  become_user: postgres
+
+- name: Postgresql | Create sonarqube database
+  community.postgresql.postgresql_db:
+    name: sonarqubedb
+    state: present
+  become: yes
+  become_user: postgres
+
+- name: Postgresql | Create user sonarqube in sonarqubedb
+  become: yes
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    db: sonarqubedb
+    name: sonarqube
+    password: sonarqube
+    expires: infinity
+    state: present
+
+- name: Postgresql | Change owner database sonarqubedb
+  become: yes
+  become_user: postgres
+  community.postgresql.postgresql_owner:
+    db: postgres
+    new_owner: sonarqube
+    obj_name: sonarqubedb
+    obj_type: database
+
