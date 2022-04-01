@@ -33,7 +33,7 @@
     address: 127.0.0.1/32
     databases: all
     method: peer
-    state: present
+    state: absent
 
 - name: Postgresql | Started postgresql service
   ansible.builtin.service:
